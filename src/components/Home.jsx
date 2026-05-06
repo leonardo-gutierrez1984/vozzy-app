@@ -78,7 +78,7 @@ export default function Home() {
     const formData = new FormData();
     formData.append("audio", file);
 
-    const response = await fetch("http://localhost:3001/transcribe", {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/transcribe`, {
       method: "POST",
       body: formData,
     });
@@ -93,7 +93,7 @@ export default function Home() {
   }
 
   async function interpretarTextoInventario(texto) {
-    const response = await fetch("http://localhost:3001/interpret", {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/interpret`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

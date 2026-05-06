@@ -8,12 +8,32 @@ import path from "path";
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Origem não permitida pelo CORS"));
+      }
+    },
+  }),
+);
+
 app.use(express.json());
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
 
 const storage = multer.diskStorage({
   destination: "uploads/",
@@ -22,7 +42,10 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
   try {
@@ -34,7 +57,7 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
 
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(filePath),
-      model: "gpt-4o-mini-transcribe",
+      model: "whisper-1",
     });
 
     fs.unlinkSync(filePath);
@@ -79,7 +102,7 @@ Regras obrigatórias:
   - produto
   - quantidade
   - unidade
-- "produto" deve estar em minúsculo.
+- "produto" deve estar em minúsculo, no singular.
 - "quantidade" deve ser número.
 - Se não encontrar unidade, use "unidades".
 - Converta números por extenso para número.
@@ -93,7 +116,7 @@ Exemplo de entrada:
 Exemplo de saída:
 [
   { "produto": "coca cola", "quantidade": 5, "unidade": "unidades" },
-  { "produto": "pão", "quantidade": 8, "unidade": "unidades" },
+  { "produto": "pao", "quantidade": 8, "unidade": "unidades" },
   { "produto": "sorvete de creme", "quantidade": 10, "unidade": "unidades" }
 ]
           `,
@@ -106,7 +129,16 @@ Exemplo de saída:
     });
 
     const conteudo = resposta.choices[0].message.content;
-    const itens = JSON.parse(conteudo);
+
+    let itens;
+    try {
+      itens = JSON.parse(conteudo);
+    } catch {
+      console.error("IA retornou JSON inválido:", conteudo);
+      return res.status(500).json({
+        error: "A IA retornou uma resposta inesperada. Tente novamente.",
+      });
+    }
 
     if (!Array.isArray(itens)) {
       return res.status(500).json({
@@ -124,6 +156,7 @@ Exemplo de saída:
   }
 });
 
-app.listen(3001, () => {
-  console.log("🚀 Servidor rodando em http://localhost:3001");
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
 });
