@@ -1,4 +1,8 @@
 import { useRef, useState } from "react";
+import {
+  transcreverAudio,
+  interpretarTextoInventario,
+} from "../services/vozzyApi";
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
@@ -72,42 +76,6 @@ export default function Home() {
 
       return novaLista;
     });
-  }
-
-  async function transcreverAudio(file) {
-    const formData = new FormData();
-    formData.append("audio", file);
-
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/transcribe`, {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Erro ao transcrever áudio.");
-    }
-
-    return data.text;
-  }
-
-  async function interpretarTextoInventario(texto) {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/interpret`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ texto }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Erro ao interpretar texto.");
-    }
-
-    return data.itens;
   }
 
   async function iniciarGravacao() {
